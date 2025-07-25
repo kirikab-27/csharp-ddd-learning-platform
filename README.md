@@ -1,521 +1,168 @@
-# 🤖 Vibe AI Integrated Template
-
-🚀 **Claude Code SDK統合済み**の次世代開発テンプレート  
-ブラウザUIから直接Claude AIを活用できる統合開発環境
-
-## ✨ 特徴
-
-### 🤖 Claude Code SDK統合
-- **ブラウザUIから直接Claude AI利用可能**
-- `claude login`での認証システム
-- ファイル操作・コード分析・生成機能
-- プロジェクト全体のAI分析
-
-### 🎯 統合開発体験
-- **`npm run dev`一発でAI機能付きアプリ起動**
-- WebUI + Express.js APIサーバー構成
-- どんなアプリにもAI機能を簡単追加
-- 開発フローの分断なし
-
-### 🔧 AI機能
-- 💬 リアルタイムチャット
-- 📝 コード分析・生成
-- 📁 ファイル操作自動化
-- 🔍 プロジェクト構造分析
-- ⚡ ホットキーサポート
-
-## 🚀 クイックスタート
-
-### 1. 前提条件
-```bash
-# Node.js 18以上
-node --version
-
-# Claude CLI インストール
-npm install -g @anthropic-ai/claude-code
-
-# Claude認証（Claude Proアカウント）
-claude login
-```
-
-### 2. プロジェクト作成
-```bash
-# テンプレートをコピー
-cp -r vibe-ai-integrated-template my-app
-cd my-app
-
-# 依存関係インストール
-npm install
-```
-
-### 3. AI機能付きアプリ起動
-```bash
-# AIサーバー + WebUIを同時起動
-npm run dev
-```
-
-**🎉 完成！** ブラウザで `http://localhost:5173` にアクセス
-
-## 🛠️ 開発構成
-
-### サーバー構成
-- **Express.js APIサーバー** (localhost:3001)
-- **Vite開発サーバー** (localhost:5173)
-- **Claude Code SDK統合**
-
-### API エンドポイント
-```
-GET  /api/health              # ヘルスチェック
-POST /api/ai/chat             # AIチャット
-POST /api/ai/file-operation   # ファイル操作
-POST /api/ai/analyze-project  # プロジェクト分析
-POST /api/ai/generate-code    # コード生成
-```
-
-## 💡 使用例
-
-### アプリ固有のAI機能追加
-
-**ToDoアプリにAI機能を追加する例：**
-
-```typescript
-// components/TodoAI.tsx
-const TodoAI = () => {
-  const generateTasks = async (goal: string) => {
-    const response = await fetch('/api/ai/generate-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: `"${goal}"を達成するためのタスクリストを生成`,
-        fileType: 'json'
-      })
-    });
-    
-    const data = await response.json();
-    return JSON.parse(data.code);
-  };
-
-  return (
-    <button onClick={() => generateTasks("健康的な生活")}>
-      AIでタスク生成
-    </button>
-  );
-};
-```
-
-### ファイル操作自動化
-```typescript
-// ファイル分析
-const analyzeFile = async (filePath: string) => {
-  const response = await fetch('/api/ai/file-operation', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      operation: 'analyze',
-      filePath
-    })
-  });
-  
-  return await response.text();
-};
-```
-
-## 🔧 カスタマイズ
-
-### AI設定変更
-```typescript
-// src/services/claudeApiService.ts
-const customConfig: ClaudeConfig = {
-  serverUrl: 'http://localhost:3001',
-  model: 'opus', // sonnet, opus, haiku
-  timeout: 60000 // 60秒
-};
-```
-
-### 新しいAI機能追加
-```typescript
-// server/index.ts に新エンドポイント追加
-app.post('/api/ai/custom-feature', async (req, res) => {
-  const { input } = req.body;
-  
-  const result = await claude()
-    .allowTools('Read', 'Write')
-    .query(`カスタム処理: ${input}`)
-    .asResult();
-    
-  res.json({ result });
-});
-```
-
-## 🎯 テンプレート活用例
-
-### 1. Wordのようなエディタアプリ
-```typescript
-// 文書校正機能
-const proofread = async (text: string) => {
-  const response = await fetch('/api/ai/chat', {
-    method: 'POST',
-    body: JSON.stringify({
-      message: `この文章を校正してください: "${text}"`
-    })
-  });
-  
-  return await response.json();
-};
-```
-
-### 2. データ分析アプリ
-```typescript
-// CSVファイル分析
-const analyzeData = async (csvPath: string) => {
-  const response = await fetch('/api/ai/analyze-project', {
-    method: 'POST',
-    body: JSON.stringify({
-      query: `${csvPath}のデータを分析して洞察を提供`
-    })
-  });
-  
-  return await response.json();
-};
-```
-
-## 🐛 トラブルシューティング
-
-### Claude CLI関連
-```bash
-# Claude CLIが見つからない場合
-npm install -g @anthropic-ai/claude-code
-
-# 認証エラーの場合
-claude login
-
-# Claude CLIの状態確認
-claude --version
-```
-
-### サーバー関連
-```bash
-# ポート競合の場合
-PORT=3002 npm run dev:server
-
-# 依存関係の問題
-rm -rf node_modules package-lock.json
-npm install
-```
-
-### 新しいレッスンが表示されない場合
-
-新しいレッスンを追加した後、表示されない場合は以下を試してください：
-
-1. **ブラウザのハードリロード**
-   - Windows/Linux: `Ctrl + Shift + R`
-   - Mac: `Cmd + Shift + R`
-
-2. **LocalStorageのクリア（開発者ツールのコンソールで実行）**
-   ```javascript
-   localStorage.clear();
-   location.reload();
-   ```
-
-3. **Zustandストアのバージョンを更新**
-   - `/src/stores/learningStore.ts`の`version`番号を増やす
-   ```typescript
-   version: 2, // この数値を増やす
-   ```
-
-**原因**: この問題は、Zustandの永続化機能（localStorage）とViteのホットリロードの相互作用により発生します。古いコース構造がキャッシュされ、新しいレッスンが反映されないことがあります。
-
-## 📚 詳細ドキュメント
-
-- [Claude Code SDK](https://github.com/instantlyeasy/claude-code-sdk-ts)
-- [API仕様書](./docs/API.md)
-- [カスタマイズガイド](./docs/CUSTOMIZATION.md)
-- [ハイブリッドAI実装ガイド](./docs/HYBRID_AI_IMPLEMENTATION.md) - AI統合システムの詳細
-- [開発知見まとめ](./docs/DEVELOPMENT_INSIGHTS.md) - 開発過程で得られた重要な学習事項
-- [実装計画](./IMPLEMENTATION_PLAN.md) - 各フェーズの詳細な実装計画
-- [トラブルシューティング](./TROUBLESHOOTING.md) - よくある問題と解決方法
-
-## 🎉 次のステップ
-
-1. **アプリのアイデアを実装**
-2. **AI機能をカスタマイズ**
-3. **ユーザー体験を向上**
-4. **プロダクションデプロイ**
-
----
-
-**🚀 Claude Code SDKの力で、あらゆるアプリにAI機能を！**
-
-# 🤖 Vibe AI Integrated Template
-
-![Development Status](https://img.shields.io/badge/Status-Phase%203%20Development-blue)
-![React](https://img.shields.io/badge/React-18.2.0-blue)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)
-![Anthropic](https://img.shields.io/badge/Claude%20API-Integrated-green)
-
-AI機能が統合された次世代の開発テンプレートです。Claude APIとの実際の統合により、ブラウザ上で本格的なAI開発体験を提供します。
-
-## ✨ Phase 3 の新機能
-
-### 🔗 実際のClaude API統合
-- **実際のAnthropicのClaude API**との統合
-- **APIキー管理**と設定UI
-- **3つのClaudeモデル**対応（Haiku、Sonnet、Opus）
-- **レート制限対応**と使用統計表示
-
-### 📁 ファイルシステム統合
-- **File System Access API**対応
-- **プロジェクトディレクトリ**の選択と管理
-- **リアルタイムファイル監視**（ポーリング方式）
-- **プロジェクト構造の自動スキャン**
-
-### 🧠 強化されたAI機能
-- **プロジェクトコンテキスト**を活用した分析
-- **知識ベースの自動学習**機能
-- **高度なフォールバック**システム
-- **統合ヘルスチェック**
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+
-- 対応ブラウザ (Chrome 86+, Edge 86+, Firefox 90+)
-- **Claude API Key** (Anthropic Consoleから取得)
-
-### Installation
-
-```bash
-# リポジトリをクローン
-git clone https://github.com/kirikab-27/vibe-ai-template.git
-cd vibe-ai-template
-
-# 依存関係をインストール
-npm install
-
-# 開発サーバーを起動
-npm run dev
-```
-
-### Claude API設定
-
-1. [Anthropic Console](https://console.anthropic.com/)でAPIキーを取得
-2. アプリケーションの「API」タブでキーを設定
-3. 接続テストを実行
-4. AI機能が利用可能になります
-
-## 📋 機能一覧
-
-### 🗨️ AIチャット
-- Claude APIによる高精度な応答
-- プロジェクトコンテキストを含む対話
-- プリセットプロンプト
-- チャット履歴管理
-
-### 🔍 コード分析
-- **実際のClaude API**による詳細分析
-- TypeScript/React特化の検証
-- 複雑度計算と品質評価
-- **プロジェクト全体を考慮**した提案
-
-### 📚 知識ベース
-- **自動学習機能**付き知識管理
-- 分析結果の自動記録
-- スマート検索とフィルター
-- カテゴリ別整理
-
-### 📁 ファイルシステム統合
-- **ブラウザから直接ファイルアクセス**
-- プロジェクト構造の可視化
-- ファイル変更の監視
-- 統計情報の表示
-
-### ⚙️ API設定
-- Claude APIキーの安全な管理
-- モデル選択（Haiku/Sonnet/Opus）
-- パラメータ調整（Temperature、Max Tokens）
-- 使用統計とレート制限表示
-
-### 🔧 高度な設定
-- ホットキーカスタマイズ
-- プライバシー設定
-- オフライン動作の制御
-- パフォーマンス調整
-
-## ⌨️ ホットキー
-
-| ショートカット | 機能 |
-|---|---|
-| `Cmd/Ctrl + K` | AIアシスタント起動 |
-| `Cmd/Ctrl + Shift + C` | チャット直接起動 |
-| `Cmd/Ctrl + Shift + A` | コード分析直接起動 |
-| `Escape` | パネルを閉じる |
-| `Cmd/Ctrl + ?` | ヘルプ表示 |
-
-## 🏗️ 開発段階
-
-### ✅ Phase 1 (完了)
-- [x] 基本AI統合システム
-- [x] UIコンポーネント群
-- [x] ホットキーシステム
-- [x] 基本知識ベース
-
-### ✅ Phase 2 (完了)
-- [x] ファイルコンテキスト統合
-- [x] 知識ベース強化
-- [x] 4タブインターフェース
-- [x] プロジェクト統計
-
-### ✅ Phase 3 (完了)
-- [x] **Claude API実装**
-- [x] **File System Access API**
-- [x] **実際のファイル監視**
-- [x] **プロジェクトコンテキスト強化**
-- [x] **API設定UI**
-- [x] **C# 中級コース実装**
-- [x] **複数コース対応**
-- [x] **Template Literal最適化**
-
-### 🎯 Phase 4 (予定)
-- [ ] **C# 上級コース開発** (DDD実践編)
-- [ ] **実践的演習システム**
-- [ ] **学習分析機能**
-- [ ] **プロジェクトベース学習**
-- [ ] エディタ連携（VS Code Extension）
-- [ ] リアルタイムコラボレーション
-- [ ] 複数AI プロバイダー対応
-- [ ] チーム機能
-
-### 🚀 Phase 5 (予定)
-- [ ] プロダクションデプロイ対応
-- [ ] 企業向け機能
-- [ ] プラグインシステム
-- [ ] マーケットプレイス
+# C# DDD 学習プラットフォーム 🎓
+
+インタラクティブなC#プログラミング学習環境で、基礎から上級のドメイン駆動設計（DDD）まで段階的に学習できるWebアプリケーションです。
+
+![C# Learning Platform](https://img.shields.io/badge/C%23-Learning%20Platform-blue?style=for-the-badge&logo=csharp)
+![TypeScript](https://img.shields.io/badge/TypeScript-4.9+-blue?style=flat-square&logo=typescript)
+![React](https://img.shields.io/badge/React-18.2+-61DAFB?style=flat-square&logo=react)
+![Vite](https://img.shields.io/badge/Vite-5.0+-646CFF?style=flat-square&logo=vite)
+
+## 🌟 特徴
+
+### 📚 包括的なコース構成
+- **基礎コース**: C#の基本構文から始める初心者向けコース
+- **中級コース**: LINQ、非同期処理、ジェネリクスなどの高度な機能
+- **上級コース**: ドメイン駆動設計（DDD）の実践的な実装
+
+### 🚀 学習支援機能
+- **インタラクティブなコードエディタ**: リアルタイムでC#コードを編集・実行
+- **コード実行シミュレーター**: ブラウザ上でC#コードの実行結果を確認
+- **構文ハイライト**: 見やすいコード表示
+- **演習問題システム**: 各レッスンに実践的な演習問題を用意
+- **ヒントシステム**: 段階的なヒントで学習をサポート
+- **進捗トラッキング**: 学習進捗を自動保存・可視化
+
+### 🤖 AI統合
+- **AIアシスタント**: 学習内容に応じたコンテキスト認識型サポート
+- **コード分析**: AIによるコードレビューと改善提案
+- **質問応答**: プログラミングに関する質問にリアルタイムで回答
+
+### 💻 技術的特徴
+- **レスポンシブデザイン**: PC・タブレット・スマートフォンに対応
+- **オフライン対応**: 一度読み込んだコンテンツはオフラインでも閲覧可能
+- **高速な動作**: Viteによる高速な開発・ビルド環境
 
 ## 🛠️ 技術スタック
 
-### Core
-- **React 18.2.0** - UIフレームワーク
-- **TypeScript 5.0+** - 型安全性
-- **Vite** - 高速ビルドツール
+### フロントエンド
+- **React 18.2+** - UIライブラリ
+- **TypeScript 4.9+** - 型安全な開発
+- **Vite 5.0+** - 高速なビルドツール
+- **Tailwind CSS 3.0+** - ユーティリティファーストCSS
+- **Zustand** - 状態管理
+- **React Markdown** - Markdownレンダリング
+- **Prism.js** - シンタックスハイライト
 
-### AI Integration
-- **@anthropic-ai/sdk** - Claude API client
-- **実際のClaude API** - Haiku/Sonnet/Opus
-- **カスタムフォールバックシステム**
+### バックエンド
+- **Node.js + Express** - APIサーバー
+- **TypeScript** - 型安全なサーバーサイド開発
 
-### UI/UX
-- **Framer Motion** - アニメーション
-- **Lucide React** - アイコン
-- **カスタムCSS** - スタイリング
+## 📦 インストール
 
-### Advanced Features
-- **File System Access API** - ブラウザファイルアクセス
-- **React Hotkeys Hook** - キーボードショートカット
-- **ローカルストレージ** - 設定の永続化
+### 前提条件
+- Node.js 18.0以上
+- npm または yarn
 
-## 🔐 セキュリティ
+### セットアップ手順
 
-### APIキー管理
-- ブラウザのローカルストレージに暗号化保存
-- セッション終了時の自動クリア（オプション）
-- セキュリティ警告の表示
-
-### プライバシー
-- データはローカルで処理
-- API通信のみクラウド送信
-- ユーザー制御のデータ共有
-
-## 🌐 ブラウザサポート
-
-| ブラウザ | File System API | Claude API | 総合サポート |
-|---|---|---|---|
-| Chrome 86+ | ✅ | ✅ | **フル機能** |
-| Edge 86+ | ✅ | ✅ | **フル機能** |
-| Firefox 90+ | ⚠️ 制限あり | ✅ | **基本機能** |
-| Safari | ❌ | ✅ | **API機能のみ** |
-
-## 📊 Phase 3 実装状況
-
-| 機能カテゴリ | 実装状況 | 説明 |
-|---|---|---|
-| **Claude API統合** | ✅ **実装済み** | 実際のAnthropic APIとの統合 |
-| **APIキー管理** | ✅ **実装済み** | 安全な保存と設定UI |
-| **ファイルシステム** | ✅ **実装済み** | File System Access API対応 |
-| **プロジェクト監視** | ✅ **実装済み** | ポーリングベースの変更検出 |
-| **知識学習** | ✅ **実装済み** | 分析結果の自動記録 |
-| **統合分析** | ✅ **実装済み** | プロジェクト全体を考慮 |
-
-## 🔄 制限事項（Phase 3時点）
-
-### 技術的制限
-- File System Access APIは**Chrome系ブラウザのみフル対応**
-- ファイル監視は**ポーリング方式**（ネイティブwatcherなし）
-- **Claude API使用料金**が発生します
-
-### 開発中の機能
-- エディタとの直接連携は**Phase 4**で実装予定
-- チームコラボレーション機能は**Phase 4**で実装予定
-- 複数AI プロバイダーは**Phase 4**で実装予定
-
-## 🤝 Contributing
-
-### 開発への参加
-
+1. リポジトリをクローン
 ```bash
-# 開発環境のセットアップ
-git clone https://github.com/kirikab-27/vibe-ai-template.git
-cd vibe-ai-template
-npm install
-npm run dev
-
-# 新機能の開発
-git checkout -b feature/your-feature
-# 変更を実装
-git commit -m "feat: your feature description"
-git push origin feature/your-feature
+git clone https://github.com/kirikab-27/csharp-ddd-learning-platform.git
+cd csharp-ddd-learning-platform
 ```
 
-### 問題報告
-- バグレポートは[Issues](https://github.com/kirikab-27/vibe-ai-template/issues)まで
-- 機能要望も歓迎します
-- セキュリティ問題は非公開でご連絡ください
+2. 依存関係をインストール
+```bash
+npm install
+```
 
-## 📋 ロードマップ
+3. 環境変数を設定
+```bash
+cp .env.example .env
+# .envファイルを編集して必要な設定を行う
+```
 
-### 2025年Q1-Q2
-- [x] Phase 1-2: 基盤システム構築
-- [x] **Phase 3: Claude API統合** ⭐ **現在**
+4. 開発サーバーを起動
+```bash
+npm run dev
+```
 
-### 2025年Q3
-- [ ] Phase 4: エディタ連携とチーム機能
-- [ ] VS Code Extension開発
-- [ ] 複数AI プロバイダー対応
+5. ブラウザで `http://localhost:8080` にアクセス
 
-### 2025年Q4
-- [ ] Phase 5: エンタープライズ機能
-- [ ] プロダクション最適化
-- [ ] マーケットプレイス機能
+## 🚀 使い方
+
+### 基本的な使い方
+
+1. **コース選択**: ホーム画面から学習したいコースを選択
+2. **レッスン進行**: 左側のナビゲーションからレッスンを選択
+3. **コード実行**: エディタにコードを入力して「実行」ボタンをクリック
+4. **演習問題**: 各レッスンの最後にある演習問題に挑戦
+5. **進捗確認**: ダッシュボードで学習進捗を確認
+
+### キーボードショートカット
+
+| ショートカット | 機能 |
+|--------------|------|
+| `Ctrl + Enter` | コード実行 |
+| `Ctrl + M` | AIメンターを開く |
+| `Ctrl + →` | 次のレッスンへ |
+| `Ctrl + ←` | 前のレッスンへ |
+| `F1` | ヘルプを表示 |
+
+## 📚 コース内容
+
+### 🟢 基礎コース（11レッスン）
+1. Hello, World! - 最初のプログラム
+2. 変数とデータ型
+3. 演算子
+4. 配列とコレクション
+5. 条件分岐（if文）
+6. 条件分岐（switch文）
+7. ループ処理
+8. メソッド
+9. クラスとオブジェクト
+10. 継承とポリモーフィズム
+11. インターフェース
+
+### 🟡 中級コース（9レッスン）
+1. LINQ基礎
+2. LINQ応用
+3. 非同期処理（async/await）
+4. ジェネリクス
+5. コレクションの活用
+6. デリゲート
+7. イベント
+8. 例外処理
+9. リソース管理
+
+### 🔴 上級コース - DDD実践（11レッスン）
+1. ドメイン駆動設計の基礎
+2. エンティティと値オブジェクト
+3. 集約
+4. リポジトリとファクトリ
+5. ドメインイベント
+6. 境界づけられたコンテキスト
+7. CQRS
+8. イベントソーシング
+9. DDDアーキテクチャ
+10. テスト戦略
+11. 実践プロジェクト
+
+## 🤝 コントリビューション
+
+プルリクエストを歓迎します！大きな変更を行う場合は、まずイシューを作成して変更内容について議論してください。
+
+1. プロジェクトをフォーク
+2. フィーチャーブランチを作成 (`git checkout -b feature/AmazingFeature`)
+3. 変更をコミット (`git commit -m 'Add some AmazingFeature'`)
+4. ブランチにプッシュ (`git push origin feature/AmazingFeature`)
+5. プルリクエストを作成
 
 ## 📄 ライセンス
 
-MIT License - 詳細は[LICENSE](LICENSE)をご覧ください。
+このプロジェクトはMITライセンスの下で公開されています。詳細は[LICENSE](LICENSE)ファイルを参照してください。
 
-## 🆘 サポート
+## 🙏 謝辞
 
-### ドキュメント
-- [セットアップガイド](docs/setup.md)
-- [API リファレンス](docs/api.md)
-- [開発ガイド](docs/development.md)
+- [React](https://reactjs.org/) - UIライブラリ
+- [Vite](https://vitejs.dev/) - ビルドツール
+- [Tailwind CSS](https://tailwindcss.com/) - CSSフレームワーク
+- [Anthropic Claude](https://www.anthropic.com/) - AI支援
 
-### コミュニティ
-- [Discussions](https://github.com/kirikab-27/vibe-ai-template/discussions) - 質問・議論
-- [Issues](https://github.com/kirikab-27/vibe-ai-template/issues) - バグ報告・機能要望
+## 📞 お問い合わせ
 
-### 開発チーム
-- [@kirikab-27](https://github.com/kirikab-27) - メイン開発者
+質問や提案がある場合は、[Issues](https://github.com/kirikab-27/csharp-ddd-learning-platform/issues)でお知らせください。
 
 ---
 
-⭐ **Phase 3 完了により、実際のClaude APIとC# 中級コースの統合が実現しました！**
-
-**最終更新**: 2025-01-27 | **Phase**: 3.0 完了 | **Status**: Phase 4 準備中
+Made with ❤️ by [kirikab-27](https://github.com/kirikab-27)
