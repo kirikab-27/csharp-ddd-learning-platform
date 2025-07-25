@@ -6,9 +6,14 @@ import type { AIAnalysisResult } from '../../types/ai';
 
 interface CodeAnalyzerProps {
   isOnline: boolean;
+  context?: {
+    mode?: 'learning' | 'general';
+    currentLesson?: any;
+  };
 }
 
-export function CodeAnalyzer({ isOnline: _ }: CodeAnalyzerProps) {
+export function CodeAnalyzer({ isOnline: _isOnline, context: _context }: CodeAnalyzerProps) {
+  // _isOnline, _context は将来の機能拡張用
   const [code, setCode] = useState('');
   const [context, setContext] = useState('');
   const [result, setResult] = useState<AIAnalysisResult | null>(null);

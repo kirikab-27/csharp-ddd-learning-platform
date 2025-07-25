@@ -203,11 +203,37 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
+### 新しいレッスンが表示されない場合
+
+新しいレッスンを追加した後、表示されない場合は以下を試してください：
+
+1. **ブラウザのハードリロード**
+   - Windows/Linux: `Ctrl + Shift + R`
+   - Mac: `Cmd + Shift + R`
+
+2. **LocalStorageのクリア（開発者ツールのコンソールで実行）**
+   ```javascript
+   localStorage.clear();
+   location.reload();
+   ```
+
+3. **Zustandストアのバージョンを更新**
+   - `/src/stores/learningStore.ts`の`version`番号を増やす
+   ```typescript
+   version: 2, // この数値を増やす
+   ```
+
+**原因**: この問題は、Zustandの永続化機能（localStorage）とViteのホットリロードの相互作用により発生します。古いコース構造がキャッシュされ、新しいレッスンが反映されないことがあります。
+
 ## 📚 詳細ドキュメント
 
 - [Claude Code SDK](https://github.com/instantlyeasy/claude-code-sdk-ts)
 - [API仕様書](./docs/API.md)
 - [カスタマイズガイド](./docs/CUSTOMIZATION.md)
+- [ハイブリッドAI実装ガイド](./docs/HYBRID_AI_IMPLEMENTATION.md) - AI統合システムの詳細
+- [開発知見まとめ](./docs/DEVELOPMENT_INSIGHTS.md) - 開発過程で得られた重要な学習事項
+- [実装計画](./IMPLEMENTATION_PLAN.md) - 各フェーズの詳細な実装計画
+- [トラブルシューティング](./TROUBLESHOOTING.md) - よくある問題と解決方法
 
 ## 🎉 次のステップ
 
@@ -339,14 +365,21 @@ npm run dev
 - [x] 4タブインターフェース
 - [x] プロジェクト統計
 
-### 🔄 Phase 3 (進行中)
+### ✅ Phase 3 (完了)
 - [x] **Claude API実装**
 - [x] **File System Access API**
 - [x] **実際のファイル監視**
 - [x] **プロジェクトコンテキスト強化**
 - [x] **API設定UI**
+- [x] **C# 中級コース実装**
+- [x] **複数コース対応**
+- [x] **Template Literal最適化**
 
 ### 🎯 Phase 4 (予定)
+- [ ] **C# 上級コース開発** (DDD実践編)
+- [ ] **実践的演習システム**
+- [ ] **学習分析機能**
+- [ ] **プロジェクトベース学習**
 - [ ] エディタ連携（VS Code Extension）
 - [ ] リアルタイムコラボレーション
 - [ ] 複数AI プロバイダー対応
@@ -483,6 +516,6 @@ MIT License - 詳細は[LICENSE](LICENSE)をご覧ください。
 
 ---
 
-⭐ **Phase 3 では実際のClaude APIとの統合により、本格的なAI開発体験を提供します！**
+⭐ **Phase 3 完了により、実際のClaude APIとC# 中級コースの統合が実現しました！**
 
-**最終更新**: 2025-01-26 | **Phase**: 3.0 | **Status**: Active Development
+**最終更新**: 2025-01-27 | **Phase**: 3.0 完了 | **Status**: Phase 4 準備中

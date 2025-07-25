@@ -11,8 +11,8 @@ export function AIFloatingButton({ onClick, isOpen, isOnline }: AIFloatingButton
   return (
     <motion.button
       className={`
-        fixed bottom-6 right-6 z-50
-        w-14 h-14 rounded-full shadow-lg
+        fixed bottom-4 right-4 lg:bottom-6 lg:right-6 z-[60]
+        w-12 h-12 lg:w-14 lg:h-14 rounded-full shadow-lg
         flex items-center justify-center
         transition-all duration-200
         ${isOnline 
@@ -37,9 +37,9 @@ export function AIFloatingButton({ onClick, isOpen, isOnline }: AIFloatingButton
         transition={{ duration: 0.2 }}
       >
         {isOnline ? (
-          <Bot size={24} />
+          <Bot className="w-5 h-5 lg:w-6 lg:h-6" />
         ) : (
-          <MessageCircle size={24} />
+          <MessageCircle className="w-5 h-5 lg:w-6 lg:h-6" />
         )}
       </motion.div>
       
@@ -51,9 +51,10 @@ export function AIFloatingButton({ onClick, isOpen, isOnline }: AIFloatingButton
         `}
       />
       
-      {/* ツールチップ */}
+      {/* ツールチップ - デスクトップのみ */}
       <div 
         className={`
+          hidden lg:block
           absolute bottom-16 right-0 px-3 py-2 
           bg-gray-900 text-white text-sm rounded-lg
           whitespace-nowrap opacity-0 pointer-events-none

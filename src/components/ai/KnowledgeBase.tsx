@@ -6,9 +6,14 @@ import { useFileContext } from '../../hooks/ai/useFileContext';
 
 interface KnowledgeBaseProps {
   isOnline: boolean;
+  context?: {
+    mode?: 'learning' | 'general';
+    currentLesson?: any;
+  };
 }
 
-export function KnowledgeBase({ isOnline: _ }: KnowledgeBaseProps) {
+export function KnowledgeBase({ isOnline: _isOnline, context: _context }: KnowledgeBaseProps) {
+  // _isOnline, _context は将来の機能拡張用
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<KnowledgeEntry | null>(null);

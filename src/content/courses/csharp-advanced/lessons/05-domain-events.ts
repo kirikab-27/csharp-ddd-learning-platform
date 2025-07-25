@@ -1,0 +1,1822 @@
+import type { Lesson } from '../../../../features/learning/types';
+
+export const domainEventsLesson: Lesson = {
+  id: 'domain-events',
+  moduleId: 'ddd-tactical-patterns',
+  title: 'ドメインイベント - ビジネスプロセスの変化を表現する',
+  description: 'DDDにおけるドメインイベントパターンの設計と実装、イベント駆動アーキテクチャによる疎結合な設計手法を詳しく学習します',
+  content: `
+# ドメインイベント（Domain Events）
+
+ドメインイベントは、ドメインエキスパートが関心を持つビジネス上の出来事を表現するパターンです。システム内の異なる部分を疎結合に保ちながら、複雑なビジネスプロセスを実装するための重要な仕組みです。
+
+## ドメインイベントとは何か？
+
+### ドメインイベントの定義と特徴
+
+**ドメインイベント**は、ドメイン内で発生した重要な出来事を表現するオブジェクトです：
+
+1. **過去の事実**: すでに発生した出来事を表現（命名は過去形）
+2. **不変性**: 一度発生したイベントは変更されない
+3. **ビジネス的重要性**: ドメインエキスパートが関心を持つ出来事
+4. **疎結合**: 異なる境界コンテキスト間の連携に使用
+
+### ドメインイベントの基底クラス
+
+\`\`\`csharp
+public interface IDomainEvent
+{
+    Guid EventId { get; }
+    DateTime OccurredOn { get; }
+    string EventType { get; }
+    int Version { get; }
+}
+
+public abstract class DomainEvent : IDomainEvent
+{
+    public Guid EventId { get; private set; }
+    public DateTime OccurredOn { get; private set; }
+    public string EventType => GetType().Name;
+    public int Version { get; private set; }
+    
+    protected DomainEvent()
+    {
+        EventId = Guid.NewGuid();
+        OccurredOn = DateTime.UtcNow;
+        Version = 1;
+    }
+    
+    protected DomainEvent(DateTime occurredOn, int version = 1)
+    {
+        EventId = Guid.NewGuid();
+        OccurredOn = occurredOn;
+        Version = version;
+    }
+}
+\`\`\`
+
+## 実践的なドメインイベントの実装
+
+### 注文関連のドメインイベント
+
+\`\`\`csharp
+// 注文が作成されたイベント
+public class OrderCreated : DomainEvent
+{
+    public OrderId OrderId { get; private set; }
+    public CustomerId CustomerId { get; private set; }
+    public Money TotalAmount { get; private set; }
+    public DateTime OrderDate { get; private set; }
+    public int ItemCount { get; private set; }
+    
+    public OrderCreated(OrderId orderId, CustomerId customerId, Money totalAmount, 
+                       DateTime orderDate, int itemCount)
+    {
+        OrderId = orderId ?? throw new ArgumentNullException(nameof(orderId));
+        CustomerId = customerId ?? throw new ArgumentNullException(nameof(customerId));
+        TotalAmount = totalAmount ?? throw new ArgumentNullException(nameof(totalAmount));
+        OrderDate = orderDate;
+        ItemCount = itemCount;
+    }
+}
+
+// 注文が確定されたイベント
+public class OrderConfirmed : DomainEvent
+{
+    public OrderId OrderId { get; private set; }
+    public CustomerId CustomerId { get; private set; }
+    public DateTime ConfirmationDate { get; private set; }
+    public Money TotalAmount { get; private set; }
+    public Address ShippingAddress { get; private set; }
+    
+    public OrderConfirmed(OrderId orderId, CustomerId customerId, 
+                         DateTime confirmationDate, Money totalAmount, Address shippingAddress)
+    {
+        OrderId = orderId ?? throw new ArgumentNullException(nameof(orderId));
+        CustomerId = customerId ?? throw new ArgumentNullException(nameof(customerId));
+        ConfirmationDate = confirmationDate;
+        TotalAmount = totalAmount ?? throw new ArgumentNullException(nameof(totalAmount));
+        ShippingAddress = shippingAddress ?? throw new ArgumentNullException(nameof(shippingAddress));
+    }
+}
+
+// 注文がキャンセルされたイベント
+public class OrderCancelled : DomainEvent
+{
+    public OrderId OrderId { get; private set; }
+    public CustomerId CustomerId { get; private set; }
+    public string CancellationReason { get; private set; }
+    public DateTime CancellationDate { get; private set; }
+    public Money RefundAmount { get; private set; }
+    
+    public OrderCancelled(OrderId orderId, CustomerId customerId, 
+                         string cancellationReason, DateTime cancellationDate, Money refundAmount)
+    {
+        OrderId = orderId ?? throw new ArgumentNullException(nameof(orderId));
+        CustomerId = customerId ?? throw new ArgumentNullException(nameof(customerId));
+        CancellationReason = cancellationReason ?? throw new ArgumentNullException(nameof(cancellationReason));
+        CancellationDate = cancellationDate;
+        RefundAmount = refundAmount ?? throw new ArgumentNullException(nameof(refundAmount));
+    }
+}
+
+// 商品の在庫が不足したイベント
+public class ProductOutOfStock : DomainEvent
+{
+    public ProductId ProductId { get; private set; }
+    public string ProductName { get; private set; }
+    public int RemainingQuantity { get; private set; }
+    public int RequestedQuantity { get; private set; }
+    
+    public ProductOutOfStock(ProductId productId, string productName, 
+                           int remainingQuantity, int requestedQuantity)
+    {
+        ProductId = productId ?? throw new ArgumentNullException(nameof(productId));
+        ProductName = productName ?? throw new ArgumentNullException(nameof(productName));
+        RemainingQuantity = remainingQuantity;
+        RequestedQuantity = requestedQuantity;
+    }
+}
+
+// 顧客がVIPになったイベント
+public class CustomerBecameVip : DomainEvent
+{
+    public CustomerId CustomerId { get; private set; }
+    public string CustomerName { get; private set; }
+    public Money TotalPurchaseAmount { get; private set; }
+    public DateTime VipAchievedDate { get; private set; }
+    
+    public CustomerBecameVip(CustomerId customerId, string customerName, 
+                           Money totalPurchaseAmount, DateTime vipAchievedDate)
+    {
+        CustomerId = customerId ?? throw new ArgumentNullException(nameof(customerId));
+        CustomerName = customerName ?? throw new ArgumentNullException(nameof(customerName));
+        TotalPurchaseAmount = totalPurchaseAmount ?? throw new ArgumentNullException(nameof(totalPurchaseAmount));
+        VipAchievedDate = vipAchievedDate;
+    }
+}
+\`\`\`
+
+### 集約でのドメインイベント管理
+
+\`\`\`csharp
+public abstract class AggregateRoot<TId> : Entity<TId>
+{
+    private readonly List<IDomainEvent> _domainEvents = new();
+    
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    
+    protected void AddDomainEvent(IDomainEvent eventItem)
+    {
+        _domainEvents.Add(eventItem);
+    }
+    
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+    
+    public void MarkEventsAsCommitted()
+    {
+        _domainEvents.Clear();
+    }
+}
+
+// 注文集約でのイベント発行例
+public class Order : AggregateRoot<OrderId>
+{
+    // ... 他のプロパティ
+    
+    public static Order Create(CustomerId customerId, Address deliveryAddress)
+    {
+        var order = new Order
+        {
+            Id = OrderId.NewId(),
+            CustomerId = customerId,
+            DeliveryAddress = deliveryAddress,
+            OrderDate = DateTime.UtcNow,
+            _status = OrderStatus.Draft
+        };
+        
+        // ドメインイベントを発行
+        order.AddDomainEvent(new OrderCreated(
+            order.Id, 
+            order.CustomerId, 
+            order.TotalAmount, 
+            order.OrderDate,
+            order.Items.Count
+        ));
+        
+        return order;
+    }
+    
+    public void Confirm()
+    {
+        if (_status != OrderStatus.Draft)
+            throw new DomainException("ドラフト状態の注文のみ確定できます。");
+            
+        if (!_items.Any())
+            throw new DomainException("商品が登録されていない注文は確定できません。");
+        
+        _status = OrderStatus.Confirmed;
+        ConfirmationDate = DateTime.UtcNow;
+        
+        // 確定イベントを発行
+        AddDomainEvent(new OrderConfirmed(
+            Id, 
+            CustomerId, 
+            ConfirmationDate.Value, 
+            TotalAmount,
+            DeliveryAddress
+        ));
+    }
+    
+    public void Cancel(string reason)
+    {
+        if (!CanBeCancelled)
+            throw new DomainException($"ステータス\{_status\}の注文はキャンセルできません。");
+        
+        var previousStatus = _status;
+        _status = OrderStatus.Cancelled;
+        
+        // キャンセルイベントを発行
+        AddDomainEvent(new OrderCancelled(
+            Id, 
+            CustomerId, 
+            reason, 
+            DateTime.UtcNow,
+            previousStatus == OrderStatus.Paid ? TotalAmount : Money.Zero
+        ));
+    }
+}
+\`\`\`
+
+## イベントハンドラーの実装
+
+### ドメインイベントハンドラーのインターフェース
+
+\`\`\`csharp
+public interface IDomainEventHandler<in TDomainEvent> 
+    where TDomainEvent : IDomainEvent
+{
+    Task HandleAsync(TDomainEvent domainEvent, CancellationToken cancellationToken = default);
+}
+
+// 複数のイベントを処理する場合の基底クラス
+public abstract class DomainEventHandler
+{
+    protected readonly ILogger _logger;
+    
+    protected DomainEventHandler(ILogger logger)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+    
+    protected virtual Task LogEventAsync<TEvent>(TEvent domainEvent) where TEvent : IDomainEvent
+    {
+        _logger.LogInformation(
+            "Handling domain event \{EventType\} with ID \{EventId\} occurred at \{OccurredOn\}",
+            domainEvent.EventType,
+            domainEvent.EventId,
+            domainEvent.OccurredOn
+        );
+        return Task.CompletedTask;
+    }
+}
+\`\`\`
+
+### 具体的なイベントハンドラーの実装
+
+\`\`\`csharp
+// 注文作成時の処理
+public class OrderCreatedHandler : DomainEventHandler, IDomainEventHandler<OrderCreated>
+{
+    private readonly IEmailService _emailService;
+    private readonly ICustomerRepository _customerRepository;
+    
+    public OrderCreatedHandler(
+        IEmailService emailService, 
+        ICustomerRepository customerRepository,
+        ILogger<OrderCreatedHandler> logger) : base(logger)
+    {
+        _emailService = emailService;
+        _customerRepository = customerRepository;
+    }
+    
+    public async Task HandleAsync(OrderCreated domainEvent, CancellationToken cancellationToken = default)
+    {
+        await LogEventAsync(domainEvent);
+        
+        try
+        {
+            // 顧客情報を取得
+            var customer = await _customerRepository.GetByIdAsync(domainEvent.CustomerId);
+            if (customer == null)
+            {
+                _logger.LogWarning("Customer \{CustomerId\} not found for order \{OrderId\}", 
+                    domainEvent.CustomerId, domainEvent.OrderId);
+                return;
+            }
+            
+            // 注文確認メールを送信
+            await _emailService.SendOrderConfirmationEmailAsync(
+                customer.Email.Value,
+                customer.FullName,
+                domainEvent.OrderId.Value,
+                domainEvent.TotalAmount.Amount,
+                domainEvent.OrderDate
+            );
+            
+            _logger.LogInformation("Order confirmation email sent to customer \{CustomerId\}", 
+                domainEvent.CustomerId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to handle OrderCreated event for order \{OrderId\}", 
+                domainEvent.OrderId);
+            throw;
+        }
+    }
+}
+
+// 顧客VIP昇格時の処理
+public class CustomerBecameVipHandler : DomainEventHandler, IDomainEventHandler<CustomerBecameVip>
+{
+    private readonly IEmailService _emailService;
+    private readonly ILoyaltyService _loyaltyService;
+    
+    public CustomerBecameVipHandler(
+        IEmailService emailService,
+        ILoyaltyService loyaltyService,
+        ILogger<CustomerBecameVipHandler> logger) : base(logger)
+    {
+        _emailService = emailService;
+        _loyaltyService = loyaltyService;
+    }
+    
+    public async Task HandleAsync(CustomerBecameVip domainEvent, CancellationToken cancellationToken = default)
+    {
+        await LogEventAsync(domainEvent);
+        
+        // VIP特典の付与
+        await _loyaltyService.GrantVipBenefitsAsync(domainEvent.CustomerId);
+        
+        // VIP昇格通知メールの送信
+        await _emailService.SendVipPromotionEmailAsync(
+            domainEvent.CustomerId,
+            domainEvent.CustomerName,
+            domainEvent.TotalPurchaseAmount.Amount
+        );
+        
+        _logger.LogInformation("VIP benefits granted to customer \{CustomerId\}", 
+            domainEvent.CustomerId);
+    }
+}
+
+// 在庫不足時の処理
+public class ProductOutOfStockHandler : DomainEventHandler, IDomainEventHandler<ProductOutOfStock>
+{
+    private readonly IInventoryService _inventoryService;
+    private readonly INotificationService _notificationService;
+    
+    public ProductOutOfStockHandler(
+        IInventoryService inventoryService,
+        INotificationService notificationService,
+        ILogger<ProductOutOfStockHandler> logger) : base(logger)
+    {
+        _inventoryService = inventoryService;
+        _notificationService = notificationService;
+    }
+    
+    public async Task HandleAsync(ProductOutOfStock domainEvent, CancellationToken cancellationToken = default)
+    {
+        await LogEventAsync(domainEvent);
+        
+        // 在庫管理者への通知
+        await _notificationService.NotifyInventoryManagerAsync(
+            domainEvent.ProductId,
+            domainEvent.ProductName,
+            domainEvent.RemainingQuantity
+        );
+        
+        // 自動発注の検討
+        await _inventoryService.ConsiderAutomaticReorderAsync(domainEvent.ProductId);
+        
+        _logger.LogWarning("Product \{ProductId\} is out of stock. Remaining: \{RemainingQuantity\}", 
+            domainEvent.ProductId, domainEvent.RemainingQuantity);
+    }
+}
+\`\`\`
+
+## ドメインイベントディスパッチャー
+
+### イベントディスパッチャーの実装
+
+\`\`\`csharp
+public interface IDomainEventDispatcher
+{
+    Task DispatchAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default);
+    Task DispatchAsync(IEnumerable<IDomainEvent> domainEvents, CancellationToken cancellationToken = default);
+}
+
+public class DomainEventDispatcher : IDomainEventDispatcher
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<DomainEventDispatcher> _logger;
+    
+    public DomainEventDispatcher(IServiceProvider serviceProvider, ILogger<DomainEventDispatcher> logger)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+    }
+    
+    public async Task DispatchAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default)
+    {
+        if (domainEvent == null) return;
+        
+        var eventType = domainEvent.GetType();
+        var handlerType = typeof(IDomainEventHandler<>).MakeGenericType(eventType);
+        
+        var handlers = _serviceProvider.GetServices(handlerType);
+        
+        _logger.LogInformation("Dispatching event \{EventType\} to \{HandlerCount\} handlers", 
+            eventType.Name, handlers.Count());
+        
+        var tasks = new List<Task>();
+        
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                var method = handlerType.GetMethod("HandleAsync");
+                var task = (Task)method.Invoke(handler, new object[] \{ domainEvent, cancellationToken \});
+                tasks.Add(task);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error invoking handler \{HandlerType\} for event \{EventType\}", 
+                    handler.GetType().Name, eventType.Name);
+                throw;
+            }
+        }
+        
+        await Task.WhenAll(tasks);
+    }
+    
+    public async Task DispatchAsync(IEnumerable<IDomainEvent> domainEvents, CancellationToken cancellationToken = default)
+    {
+        if (domainEvents == null || !domainEvents.Any()) return;
+        
+        var tasks = domainEvents.Select(e => DispatchAsync(e, cancellationToken));
+        await Task.WhenAll(tasks);
+    }
+}
+\`\`\`
+
+### リポジトリでのイベント発行
+
+\`\`\`csharp
+public class OrderRepository : IOrderRepository
+{
+    private readonly DbContext _context;
+    private readonly IDomainEventDispatcher _eventDispatcher;
+    
+    public OrderRepository(DbContext context, IDomainEventDispatcher eventDispatcher)
+    {
+        _context = context;
+        _eventDispatcher = eventDispatcher;
+    }
+    
+    public async Task<Order> AddAsync(Order order)
+    {
+        var entry = await _context.Set<Order>().AddAsync(order);
+        return entry.Entity;
+    }
+    
+    public async Task SaveChangesAsync()
+    {
+        // 変更されたすべての集約からドメインイベントを収集
+        var aggregatesWithEvents = _context.ChangeTracker
+            .Entries<AggregateRoot<object>>()
+            .Where(e => e.Entity.DomainEvents.Any())
+            .Select(e => e.Entity)
+            .ToList();
+        
+        var domainEvents = aggregatesWithEvents
+            .SelectMany(a => a.DomainEvents)
+            .ToList();
+        
+        // データベースの変更を保存
+        await _context.SaveChangesAsync();
+        
+        // ドメインイベントを発行
+        if (domainEvents.Any())
+        {
+            await _eventDispatcher.DispatchAsync(domainEvents);
+            
+            // イベントをクリア
+            foreach (var aggregate in aggregatesWithEvents)
+            {
+                aggregate.MarkEventsAsCommitted();
+            }
+        }
+    }
+}
+\`\`\`
+
+## イベントストア（Event Store）の実装
+
+### イベントストアのインターフェース
+
+\`\`\`csharp
+public interface IEventStore
+{
+    Task SaveEventAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default);
+    Task SaveEventsAsync(IEnumerable<IDomainEvent> domainEvents, CancellationToken cancellationToken = default);
+    Task<IEnumerable<IDomainEvent>> GetEventsAsync(Guid aggregateId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<IDomainEvent>> GetEventsByTypeAsync<TEvent>(CancellationToken cancellationToken = default) where TEvent : IDomainEvent;
+    Task<IEnumerable<IDomainEvent>> GetEventsAsync(DateTime from, DateTime to, CancellationToken cancellationToken = default);
+}
+
+// イベントの永続化用エンティティ
+public class StoredEvent
+{
+    public Guid Id { get; set; }
+    public Guid EventId { get; set; }
+    public string EventType { get; set; }
+    public string EventData { get; set; }
+    public DateTime OccurredOn { get; set; }
+    public int Version { get; set; }
+    public Guid? AggregateId { get; set; }
+    public string AggregateType { get; set; }
+}
+
+public class EventStore : IEventStore
+{
+    private readonly DbContext _context;
+    private readonly IJsonSerializer _serializer;
+    private readonly ILogger<EventStore> _logger;
+    
+    public EventStore(DbContext context, IJsonSerializer serializer, ILogger<EventStore> logger)
+    {
+        _context = context;
+        _serializer = serializer;
+        _logger = logger;
+    }
+    
+    public async Task SaveEventAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default)
+    {
+        var storedEvent = new StoredEvent
+        {
+            Id = Guid.NewGuid(),
+            EventId = domainEvent.EventId,
+            EventType = domainEvent.EventType,
+            EventData = _serializer.Serialize(domainEvent),
+            OccurredOn = domainEvent.OccurredOn,
+            Version = domainEvent.Version
+        };
+        
+        await _context.Set<StoredEvent>().AddAsync(storedEvent, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+        
+        _logger.LogInformation("Stored event \{EventType\} with ID \{EventId\}", 
+            domainEvent.EventType, domainEvent.EventId);
+    }
+    
+    public async Task SaveEventsAsync(IEnumerable<IDomainEvent> domainEvents, CancellationToken cancellationToken = default)
+    {
+        var storedEvents = domainEvents.Select(e => new StoredEvent
+        {
+            Id = Guid.NewGuid(),
+            EventId = e.EventId,
+            EventType = e.EventType,
+            EventData = _serializer.Serialize(e),
+            OccurredOn = e.OccurredOn,
+            Version = e.Version
+        });
+        
+        await _context.Set<StoredEvent>().AddRangeAsync(storedEvents, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+        
+        _logger.LogInformation("Stored \{EventCount\} events", domainEvents.Count());
+    }
+    
+    public async Task<IEnumerable<IDomainEvent>> GetEventsAsync(Guid aggregateId, CancellationToken cancellationToken = default)
+    {
+        var storedEvents = await _context.Set<StoredEvent>()
+            .Where(e => e.AggregateId == aggregateId)
+            .OrderBy(e => e.OccurredOn)
+            .ToListAsync(cancellationToken);
+        
+        return storedEvents.Select(DeserializeEvent).Where(e => e != null);
+    }
+    
+    private IDomainEvent DeserializeEvent(StoredEvent storedEvent)
+    {
+        try
+        {
+            var eventType = Type.GetType(storedEvent.EventType);
+            if (eventType == null)
+            {
+                _logger.LogWarning("Unknown event type: \{EventType\}", storedEvent.EventType);
+                return null;
+            }
+            
+            return (IDomainEvent)_serializer.Deserialize(storedEvent.EventData, eventType);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize event \{EventId\} of type \{EventType\}", 
+                storedEvent.EventId, storedEvent.EventType);
+            return null;
+        }
+    }
+}
+\`\`\`
+
+## 実習課題
+
+### 課題1: 基本的なドメインイベントの実装
+
+図書館管理システムで以下のドメインイベントを実装してください：
+
+1. **BookBorrowed**: 本が貸出されたイベント
+2. **BookReturned**: 本が返却されたイベント
+3. **BookOverdue**: 本が延滞したイベント
+4. **MemberSuspended**: 会員が停止されたイベント
+
+\`\`\`csharp
+// ここに実装してください
+public class BookBorrowed : DomainEvent
+{
+    // TODO: 必要なプロパティとコンストラクタを実装
+}
+
+public class BookReturned : DomainEvent
+{
+    // TODO: 必要なプロパティとコンストラクタを実装
+}
+
+// イベントハンドラーも実装してください
+public class BookBorrowedHandler : IDomainEventHandler<BookBorrowed>
+{
+    // TODO: 貸出通知メールの送信処理を実装
+}
+\`\`\`
+
+### 課題2: 複雑なビジネスプロセスの実装
+
+会員の延滞回数に基づく自動停止処理を実装してください：
+
+1. 本が延滞された時
+2. 延滞回数をチェック
+3. 3回以上の場合、会員を自動停止
+4. 停止通知メールを送信
+
+\`\`\`csharp
+public class Member : AggregateRoot<MemberId>
+{
+    private int _overdueCount;
+    
+    public void RecordOverdueBook(BookId bookId)
+    {
+        _overdueCount++;
+        
+        AddDomainEvent(new BookOverdue(Id, bookId, DateTime.UtcNow));
+        
+        // TODO: 延滞回数チェックと自動停止処理を実装
+    }
+}
+\`\`\`
+
+### 課題3: イベントソーシングパターンの実装
+
+注文の状態変更履歴をイベントで管理するシステムを実装してください：
+
+\`\`\`csharp
+public class OrderAggregate
+{
+    private readonly List<IDomainEvent> _events = new();
+    
+    public static OrderAggregate FromEvents(IEnumerable<IDomainEvent> events)
+    {
+        var aggregate = new OrderAggregate();
+        
+        foreach (var @event in events)
+        {
+            aggregate.Apply(@event);
+        }
+        
+        return aggregate;
+    }
+    
+    private void Apply(IDomainEvent @event)
+    {
+        // TODO: イベントに基づく状態復元を実装
+        switch (@event)
+        {
+            case OrderCreated orderCreated:
+                // TODO: 実装
+                break;
+            case OrderConfirmed orderConfirmed:
+                // TODO: 実装
+                break;
+            // 他のイベントケースも実装
+        }
+    }
+}
+\`\`\`
+
+## まとめ
+
+ドメインイベントは、DDDにおいて以下の価値を提供します：
+
+### 主な利点
+
+1. **疎結合**: 異なる境界コンテキスト間の結合度を下げる
+2. **拡張性**: 新しいビジネス要件に柔軟に対応
+3. **監査性**: ビジネスプロセスの完全な履歴を保持
+4. **復旧性**: イベントによる状態の再構築が可能
+
+### 設計時の注意点
+
+1. **イベントの設計**: ビジネス的意味を持つ適切な粒度で設計
+2. **順序性**: イベントの発生順序に依存する処理の考慮
+3. **冪等性**: 同じイベントを複数回処理しても安全であること
+4. **エラーハンドリング**: 失敗したイベント処理の再試行戦略
+
+### 次のステップ
+
+- CQRS（Command Query Responsibility Segregation）パターンとの組み合わせ
+- イベントストリーミング技術（Apache Kafka等）との統合
+- 分散システムでのイベント整合性
+- サーガパターンによる分散トランザクション
+
+ドメインイベントをマスターすることで、複雑なビジネスプロセスを明確に表現し、保守しやすいシステムを構築できるようになります。
+`,
+  duration: 120,
+  order: 5,
+  codeExamples: [
+    {
+      id: 'domain-event-base-class',
+      title: 'ドメインイベントの基底クラス',
+      language: 'csharp',
+      code: `using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+
+// === ドメインイベントの基底クラスと高度な実装 ===
+
+public interface IDomainEvent
+{
+    Guid EventId { get; }
+    DateTime OccurredOn { get; }
+    string EventType { get; }
+    int Version { get; }
+    string CorrelationId { get; }
+    string CausationId { get; }
+    IDictionary<string, object> Metadata { get; }
+}
+
+public abstract class DomainEvent : IDomainEvent
+{
+    public Guid EventId { get; private set; }
+    public DateTime OccurredOn { get; private set; }
+    public string EventType => GetType().Name;
+    public int Version { get; private set; }
+    public string CorrelationId { get; private set; }
+    public string CausationId { get; private set; }
+    public IDictionary<string, object> Metadata { get; private set; }
+    
+    protected DomainEvent()
+    {
+        EventId = Guid.NewGuid();
+        OccurredOn = DateTime.UtcNow;
+        Version = 1;
+        CorrelationId = Guid.NewGuid().ToString();
+        Metadata = new Dictionary<string, object>();
+    }
+    
+    protected DomainEvent(string correlationId, string causationId = null)
+    {
+        EventId = Guid.NewGuid();
+        OccurredOn = DateTime.UtcNow;
+        Version = 1;
+        CorrelationId = correlationId ?? Guid.NewGuid().ToString();
+        CausationId = causationId;
+        Metadata = new Dictionary<string, object>();
+    }
+    
+    public void AddMetadata(string key, object value)
+    {
+        Metadata[key] = value;
+    }
+    
+    public T GetMetadata<T>(string key)
+    {
+        return Metadata.TryGetValue(key, out var value) ? (T)value : default(T);
+    }
+}
+
+// イベント発行用のインターフェース
+public interface IDomainEventPublisher
+{
+    Task PublishAsync<T>(T domainEvent, CancellationToken cancellationToken = default) where T : IDomainEvent;
+    Task PublishAsync(IEnumerable<IDomainEvent> domainEvents, CancellationToken cancellationToken = default);
+}
+
+// 集約ルートでのイベント管理の強化版
+public abstract class AggregateRoot<TId> : Entity<TId>
+{
+    private readonly List<IDomainEvent> _domainEvents = new();
+    private readonly List<IDomainEvent> _uncommittedEvents = new();
+    private int _version = 0;
+    
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    public IReadOnlyList<IDomainEvent> UncommittedEvents => _uncommittedEvents.AsReadOnly();
+    public int Version { get; protected set; }
+    
+    protected void AddDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+        _uncommittedEvents.Add(domainEvent);
+        
+        // メタデータの自動設定
+        domainEvent.AddMetadata("AggregateId", Id.ToString());
+        domainEvent.AddMetadata("AggregateType", GetType().Name);
+        domainEvent.AddMetadata("Version", _version + 1);
+    }
+    
+    public void MarkEventsAsCommitted()
+    {
+        _uncommittedEvents.Clear();
+        _version++;
+    }
+    
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+        _uncommittedEvents.Clear();
+    }
+    
+    // イベント再生用（イベントソーシング対応）
+    public void LoadFromHistory(IEnumerable<IDomainEvent> events)
+    {
+        foreach (var domainEvent in events.OrderBy(e => e.OccurredOn))
+        {
+            ApplyEvent(domainEvent, false);
+            _version++;
+        }
+    }
+    
+    protected virtual void ApplyEvent(IDomainEvent domainEvent, bool isNew = true)
+    {
+        // 派生クラスでオーバーライドして具体的な適用ロジックを実装
+        if (isNew)
+        {
+            AddDomainEvent(domainEvent);
+        }
+    }
+}`,
+      description: 'ドメインイベントの基底クラスとアグリゲートルート実装'
+    },
+    {
+      id: 'mediatr-integration-implementation',
+      title: 'MediatRとの統合実装 - プロダクションレディなイベント処理',
+      language: 'csharp',
+      code: `using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using MediatR;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
+
+// === MediatRを使った高度なドメインイベント処理 ===
+
+// MediatRのINotificationを継承したドメインイベント
+public interface IDomainEvent : INotification
+{
+    Guid EventId { get; }
+    DateTime OccurredOn { get; }
+    string EventType { get; }
+    int Version { get; }
+    string CorrelationId { get; }
+    IDictionary<string, object> Metadata { get; }
+}
+
+public abstract class DomainEvent : IDomainEvent
+{
+    public Guid EventId { get; private set; }
+    public DateTime OccurredOn { get; private set; }
+    public string EventType => GetType().Name;
+    public int Version { get; private set; }
+    public string CorrelationId { get; private set; }
+    public IDictionary<string, object> Metadata { get; private set; }
+    
+    protected DomainEvent()
+    {
+        EventId = Guid.NewGuid();
+        OccurredOn = DateTime.UtcNow;
+        Version = 1;
+        CorrelationId = Guid.NewGuid().ToString();
+        Metadata = new Dictionary<string, object>();
+    }
+}
+
+// 注文作成イベント（MediatR対応）
+public class OrderCreated : DomainEvent
+{
+    public OrderId OrderId { get; private set; }
+    public CustomerId CustomerId { get; private set; }
+    public Money TotalAmount { get; private set; }
+    public DateTime OrderDate { get; private set; }
+    public List<OrderItemData> Items { get; private set; }
+    
+    public OrderCreated(OrderId orderId, CustomerId customerId, Money totalAmount, 
+                       DateTime orderDate, IEnumerable<OrderItemData> items, 
+                       string correlationId = null) : base()
+    {
+        OrderId = orderId;
+        CustomerId = customerId;
+        TotalAmount = totalAmount;
+        OrderDate = orderDate;
+        Items = items.ToList();
+        
+        if (!string.IsNullOrEmpty(correlationId))
+        {
+            Metadata["CorrelationId"] = correlationId;
+        }
+    }
+}
+
+public class OrderItemData
+{
+    public ProductId ProductId { get; set; }
+    public string ProductName { get; set; }
+    public Money UnitPrice { get; set; }
+    public int Quantity { get; set; }
+}
+
+// 複数のハンドラーによる並列処理
+public class OrderCreatedEmailHandler : INotificationHandler<OrderCreated>
+{
+    private readonly IEmailService _emailService;
+    private readonly ICustomerRepository _customerRepository;
+    private readonly ILogger<OrderCreatedEmailHandler> _logger;
+    
+    public OrderCreatedEmailHandler(
+        IEmailService emailService,
+        ICustomerRepository customerRepository,
+        ILogger<OrderCreatedEmailHandler> logger)
+    {
+        _emailService = emailService;
+        _customerRepository = customerRepository;
+        _logger = logger;
+    }
+    
+    public async Task Handle(OrderCreated notification, CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Processing OrderCreated event for email notification: {OrderId}", 
+                notification.OrderId);
+            
+            var customer = await _customerRepository.GetByIdAsync(notification.CustomerId);
+            if (customer == null)
+            {
+                _logger.LogWarning("Customer not found: {CustomerId}", notification.CustomerId);
+                return;
+            }
+            
+            var emailData = new OrderConfirmationEmailData
+            {
+                CustomerEmail = customer.Email.Value,
+                CustomerName = customer.FullName,
+                OrderId = notification.OrderId.Value,
+                OrderDate = notification.OrderDate,
+                TotalAmount = notification.TotalAmount.Amount,
+                Items = notification.Items.Select(i => new EmailOrderItem
+                {
+                    ProductName = i.ProductName,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice.Amount
+                }).ToList()
+            };
+            
+            await _emailService.SendOrderConfirmationAsync(emailData, cancellationToken);
+            
+            _logger.LogInformation("Order confirmation email sent successfully: {OrderId}", 
+                notification.OrderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send order confirmation email: {OrderId}", 
+                notification.OrderId);
+            
+            // 重要: エラーをスローしてリトライ機構に委ねる
+            throw;
+        }
+    }
+}
+
+public class OrderCreatedInventoryHandler : INotificationHandler<OrderCreated>
+{
+    private readonly IInventoryService _inventoryService;
+    private readonly IMediator _mediator;
+    private readonly ILogger<OrderCreatedInventoryHandler> _logger;
+    
+    public OrderCreatedInventoryHandler(
+        IInventoryService inventoryService,
+        IMediator mediator,
+        ILogger<OrderCreatedInventoryHandler> logger)
+    {
+        _inventoryService = inventoryService;
+        _mediator = mediator;
+        _logger = logger;
+    }
+    
+    public async Task Handle(OrderCreated notification, CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Processing OrderCreated event for inventory reservation: {OrderId}", 
+                notification.OrderId);
+            
+            foreach (var item in notification.Items)
+            {
+                var reservationResult = await _inventoryService.ReserveInventoryAsync(
+                    item.ProductId, item.Quantity, notification.OrderId, cancellationToken);
+                
+                if (!reservationResult.IsSuccess)
+                {
+                    _logger.LogWarning("Inventory reservation failed for product {ProductId}: {Reason}", 
+                        item.ProductId, reservationResult.FailureReason);
+                    
+                    // 在庫不足イベントを発行
+                    var inventoryShortageEvent = new InventoryShortage(
+                        item.ProductId,
+                        item.ProductName,
+                        item.Quantity,
+                        reservationResult.AvailableQuantity,
+                        notification.OrderId,
+                        notification.CorrelationId
+                    );
+                    
+                    await _mediator.Publish(inventoryShortageEvent, cancellationToken);
+                }
+            }
+            
+            _logger.LogInformation("Inventory reservation completed: {OrderId}", notification.OrderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process inventory reservation: {OrderId}", 
+                notification.OrderId);
+            throw;
+        }
+    }
+}
+
+// 在庫不足イベント
+public class InventoryShortage : DomainEvent
+{
+    public ProductId ProductId { get; private set; }
+    public string ProductName { get; private set; }
+    public int RequestedQuantity { get; private set; }
+    public int AvailableQuantity { get; private set; }
+    public OrderId OrderId { get; private set; }
+    
+    public InventoryShortage(ProductId productId, string productName, 
+                           int requestedQuantity, int availableQuantity, 
+                           OrderId orderId, string correlationId) : base()
+    {
+        ProductId = productId;
+        ProductName = productName;
+        RequestedQuantity = requestedQuantity;
+        AvailableQuantity = availableQuantity;
+        OrderId = orderId;
+        Metadata["CorrelationId"] = correlationId;
+    }
+}
+
+// 在庫不足の処理ハンドラー
+public class InventoryShortageHandler : INotificationHandler<InventoryShortage>
+{
+    private readonly IOrderRepository _orderRepository;
+    private readonly INotificationService _notificationService;
+    private readonly ILogger<InventoryShortageHandler> _logger;
+    
+    public InventoryShortageHandler(
+        IOrderRepository orderRepository,
+        INotificationService notificationService,
+        ILogger<InventoryShortageHandler> logger)
+    {
+        _orderRepository = orderRepository;
+        _notificationService = notificationService;
+        _logger = logger;
+    }
+    
+    public async Task Handle(InventoryShortage notification, CancellationToken cancellationToken)
+    {
+        _logger.LogWarning("Handling inventory shortage: Product {ProductId}, Requested {Requested}, Available {Available}", 
+            notification.ProductId, notification.RequestedQuantity, notification.AvailableQuantity);
+        
+        // 1. 注文を保留状態に更新
+        var order = await _orderRepository.GetByIdAsync(notification.OrderId);
+        if (order != null)
+        {
+            order.MarkAsPendingDueToInventoryShortage(notification.ProductId);
+            await _orderRepository.UpdateAsync(order);
+        }
+        
+        // 2. 管理者に通知
+        await _notificationService.NotifyInventoryManagerAsync(
+            notification.ProductId,
+            notification.ProductName,
+            notification.RequestedQuantity,
+            notification.AvailableQuantity);
+        
+        // 3. 顧客に在庫不足の通知（必要に応じて）
+        if (order != null)
+        {
+            await _notificationService.NotifyCustomerOfDelayAsync(
+                order.CustomerId,
+                notification.OrderId,
+                notification.ProductName);
+        }
+    }
+}
+
+// MediatRベースのドメインイベントディスパッチャー
+public class MediatRDomainEventDispatcher : IDomainEventDispatcher
+{
+    private readonly IMediator _mediator;
+    private readonly ILogger<MediatRDomainEventDispatcher> _logger;
+    
+    public MediatRDomainEventDispatcher(IMediator mediator, ILogger<MediatRDomainEventDispatcher> logger)
+    {
+        _mediator = mediator;
+        _logger = logger;
+    }
+    
+    public async Task DispatchAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default)
+    {
+        if (domainEvent == null) return;
+        
+        _logger.LogInformation("Dispatching domain event: {EventType} ({EventId})", 
+            domainEvent.EventType, domainEvent.EventId);
+        
+        try
+        {
+            await _mediator.Publish(domainEvent, cancellationToken);
+            
+            _logger.LogInformation("Successfully dispatched domain event: {EventType} ({EventId})", 
+                domainEvent.EventType, domainEvent.EventId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch domain event: {EventType} ({EventId})", 
+                domainEvent.EventType, domainEvent.EventId);
+            throw;
+        }
+    }
+    
+    public async Task DispatchAsync(IEnumerable<IDomainEvent> domainEvents, CancellationToken cancellationToken = default)
+    {
+        var events = domainEvents.ToList();
+        if (!events.Any()) return;
+        
+        _logger.LogInformation("Dispatching {EventCount} domain events", events.Count);
+        
+        // 並列処理でパフォーマンス向上
+        var tasks = events.Select(e => DispatchAsync(e, cancellationToken));
+        await Task.WhenAll(tasks);
+    }
+}
+
+// DI コンテナでの登録例
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddDomainEvents(this IServiceCollection services)
+    {
+        // MediatR の登録
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(OrderCreated).Assembly));
+        
+        // ドメインイベントディスパッチャーの登録
+        services.AddScoped<IDomainEventDispatcher, MediatRDomainEventDispatcher>();
+        
+        // イベントハンドラーの登録（自動的にMediatRが検出）
+        services.AddScoped<INotificationHandler<OrderCreated>, OrderCreatedEmailHandler>();
+        services.AddScoped<INotificationHandler<OrderCreated>, OrderCreatedInventoryHandler>();
+        services.AddScoped<INotificationHandler<InventoryShortage>, InventoryShortageHandler>();
+        
+        return services;
+    }
+}`,
+      description: 'MediatRとドメインイベントディスパッチャーのDI設定'
+    },
+    {
+      id: 'order-related-domain-events',
+      title: '注文関連のドメインイベント実装',
+      code: `public class OrderCreated : DomainEvent
+{
+    public OrderId OrderId { get; private set; }
+    public CustomerId CustomerId { get; private set; }
+    public Money TotalAmount { get; private set; }
+    public DateTime OrderDate { get; private set; }
+    public int ItemCount { get; private set; }
+    
+    public OrderCreated(OrderId orderId, CustomerId customerId, Money totalAmount, 
+                       DateTime orderDate, int itemCount)
+    {
+        OrderId = orderId ?? throw new ArgumentNullException(nameof(orderId));
+        CustomerId = customerId ?? throw new ArgumentNullException(nameof(customerId));
+        TotalAmount = totalAmount ?? throw new ArgumentNullException(nameof(totalAmount));
+        OrderDate = orderDate;
+        ItemCount = itemCount;
+    }
+}
+
+public class OrderConfirmed : DomainEvent
+{
+    public OrderId OrderId { get; private set; }
+    public CustomerId CustomerId { get; private set; }
+    public DateTime ConfirmationDate { get; private set; }
+    public Money TotalAmount { get; private set; }
+    public Address ShippingAddress { get; private set; }
+    
+    public OrderConfirmed(OrderId orderId, CustomerId customerId, 
+                         DateTime confirmationDate, Money totalAmount, Address shippingAddress)
+    {
+        OrderId = orderId ?? throw new ArgumentNullException(nameof(orderId));
+        CustomerId = customerId ?? throw new ArgumentNullException(nameof(customerId));
+        ConfirmationDate = confirmationDate;
+        TotalAmount = totalAmount ?? throw new ArgumentNullException(nameof(totalAmount));
+        ShippingAddress = shippingAddress ?? throw new ArgumentNullException(nameof(shippingAddress));
+    }
+}`,
+      language: 'csharp'
+    },
+    {
+      id: 'aggregate-event-management',
+      title: '集約でのイベント管理',
+      code: `public class Order : AggregateRoot<OrderId>
+{
+    public static Order Create(CustomerId customerId, Address deliveryAddress)
+    {
+        var order = new Order
+        {
+            Id = OrderId.NewId(),
+            CustomerId = customerId,
+            DeliveryAddress = deliveryAddress,
+            OrderDate = DateTime.UtcNow,
+            _status = OrderStatus.Draft
+        };
+        
+        // ドメインイベントを発行
+        order.AddDomainEvent(new OrderCreated(
+            order.Id, 
+            order.CustomerId, 
+            order.TotalAmount, 
+            order.OrderDate,
+            order.Items.Count
+        ));
+        
+        return order;
+    }
+    
+    public void Confirm()
+    {
+        if (_status != OrderStatus.Draft)
+            throw new DomainException("ドラフト状態の注文のみ確定できます。");
+            
+        _status = OrderStatus.Confirmed;
+        ConfirmationDate = DateTime.UtcNow;
+        
+        // 確定イベントを発行
+        AddDomainEvent(new OrderConfirmed(
+            Id, 
+            CustomerId, 
+            ConfirmationDate.Value, 
+            TotalAmount,
+            DeliveryAddress
+        ));
+    }
+}`,
+      language: 'csharp'
+    },
+    {
+      id: 'event-handler-implementation',
+      title: 'イベントハンドラーの実装',
+      code: `public interface IDomainEventHandler<in TDomainEvent> 
+    where TDomainEvent : IDomainEvent
+{
+    Task HandleAsync(TDomainEvent domainEvent, CancellationToken cancellationToken = default);
+}
+
+public class OrderCreatedHandler : IDomainEventHandler<OrderCreated>
+{
+    private readonly IEmailService _emailService;
+    private readonly ICustomerRepository _customerRepository;
+    
+    public OrderCreatedHandler(IEmailService emailService, ICustomerRepository customerRepository)
+    {
+        _emailService = emailService;
+        _customerRepository = customerRepository;
+    }
+    
+    public async Task HandleAsync(OrderCreated domainEvent, CancellationToken cancellationToken = default)
+    {
+        var customer = await _customerRepository.GetByIdAsync(domainEvent.CustomerId);
+        
+        await _emailService.SendOrderConfirmationEmailAsync(
+            customer.Email.Value,
+            customer.FullName,
+            domainEvent.OrderId.Value,
+            domainEvent.TotalAmount.Amount,
+            domainEvent.OrderDate
+        );
+    }
+}`,
+      language: 'csharp'
+    },
+    {
+      id: 'enterprise-event-store-implementation',
+      title: '完全なイベントストア実装 - エンタープライズグレード',
+      code: `using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using System.Reflection;
+
+// === 完全なイベントストア実装 ===
+
+// イベントストアのインターフェース
+public interface IEventStore
+{
+    Task SaveEventsAsync(string aggregateId, IEnumerable<IDomainEvent> events, 
+                        int expectedVersion, CancellationToken cancellationToken = default);
+    Task<IEnumerable<IDomainEvent>> GetEventsAsync(string aggregateId, 
+                                                  int fromVersion = 0, CancellationToken cancellationToken = default);
+    Task<IEnumerable<IDomainEvent>> GetEventsByTypeAsync<TEvent>(CancellationToken cancellationToken = default) 
+        where TEvent : IDomainEvent;
+    Task<IEnumerable<IDomainEvent>> GetEventsAsync(DateTime from, DateTime to, 
+                                                  CancellationToken cancellationToken = default);
+    Task<EventStoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
+}
+
+// 永続化用のイベントエンティティ
+public class StoredEvent
+{
+    public long Id { get; set; }
+    public Guid EventId { get; set; }
+    public string AggregateId { get; set; }
+    public string AggregateType { get; set; }
+    public string EventType { get; set; }
+    public string EventData { get; set; }
+    public string Metadata { get; set; }
+    public DateTime OccurredOn { get; set; }
+    public int Version { get; set; }
+    public string CorrelationId { get; set; }
+    public string CausationId { get; set; }
+}
+
+// イベントストアの実装
+public class SqlEventStore : IEventStore
+{
+    private readonly EventStoreDbContext _context;
+    private readonly ILogger<SqlEventStore> _logger;
+    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly Dictionary<string, Type> _eventTypeCache;
+    
+    public SqlEventStore(EventStoreDbContext context, ILogger<SqlEventStore> logger)
+    {
+        _context = context;
+        _logger = logger;
+        
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+        
+        _eventTypeCache = new Dictionary<string, Type>();
+        LoadEventTypes();
+    }
+    
+    private void LoadEventTypes()
+    {
+        var eventTypes = Assembly.GetExecutingAssembly()
+            .GetTypes()
+            .Where(t => typeof(IDomainEvent).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
+        
+        foreach (var type in eventTypes)
+        {
+            _eventTypeCache[type.Name] = type;
+        }
+    }
+    
+    public async Task SaveEventsAsync(string aggregateId, IEnumerable<IDomainEvent> events, 
+                                    int expectedVersion, CancellationToken cancellationToken = default)
+    {
+        var eventsList = events.ToList();
+        if (!eventsList.Any()) return;
+        
+        _logger.LogInformation("Saving {EventCount} events for aggregate {AggregateId} at version {ExpectedVersion}", 
+            eventsList.Count, aggregateId, expectedVersion);
+        
+        using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        
+        try
+        {
+            // 楽観的並行性制御のチェック
+            var currentVersion = await GetCurrentVersionAsync(aggregateId, cancellationToken);
+            if (currentVersion != expectedVersion)
+            {
+                throw new ConcurrencyException(
+                    $"Expected version {expectedVersion} but current version is {currentVersion} for aggregate {aggregateId}");
+            }
+            
+            var storedEvents = new List<StoredEvent>();
+            var version = expectedVersion;
+            
+            foreach (var domainEvent in eventsList)
+            {
+                version++;
+                
+                var storedEvent = new StoredEvent
+                {
+                    EventId = domainEvent.EventId,
+                    AggregateId = aggregateId,
+                    AggregateType = domainEvent.GetMetadata<string>("AggregateType") ?? "Unknown",
+                    EventType = domainEvent.EventType,
+                    EventData = JsonSerializer.Serialize(domainEvent, domainEvent.GetType(), _jsonOptions),
+                    Metadata = JsonSerializer.Serialize(domainEvent.Metadata, _jsonOptions),
+                    OccurredOn = domainEvent.OccurredOn,
+                    Version = version,
+                    CorrelationId = domainEvent.CorrelationId,
+                    CausationId = domainEvent.GetMetadata<string>("CausationId")
+                };
+                
+                storedEvents.Add(storedEvent);
+            }
+            
+            await _context.StoredEvents.AddRangeAsync(storedEvents, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            
+            _logger.LogInformation("Successfully saved {EventCount} events for aggregate {AggregateId}", 
+                eventsList.Count, aggregateId);
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            _logger.LogError(ex, "Failed to save events for aggregate {AggregateId}", aggregateId);
+            throw;
+        }
+    }
+    
+    public async Task<IEnumerable<IDomainEvent>> GetEventsAsync(string aggregateId, 
+                                                              int fromVersion = 0, 
+                                                              CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Loading events for aggregate {AggregateId} from version {FromVersion}", 
+            aggregateId, fromVersion);
+        
+        var storedEvents = await _context.StoredEvents
+            .Where(e => e.AggregateId == aggregateId && e.Version > fromVersion)
+            .OrderBy(e => e.Version)
+            .ToListAsync(cancellationToken);
+        
+        var events = new List<IDomainEvent>();
+        
+        foreach (var storedEvent in storedEvents)
+        {
+            var domainEvent = DeserializeEvent(storedEvent);
+            if (domainEvent != null)
+            {
+                events.Add(domainEvent);
+            }
+        }
+        
+        _logger.LogDebug("Loaded {EventCount} events for aggregate {AggregateId}", 
+            events.Count, aggregateId);
+        
+        return events;
+    }
+    
+    public async Task<IEnumerable<IDomainEvent>> GetEventsByTypeAsync<TEvent>(CancellationToken cancellationToken = default) 
+        where TEvent : IDomainEvent
+    {
+        var eventTypeName = typeof(TEvent).Name;
+        
+        var storedEvents = await _context.StoredEvents
+            .Where(e => e.EventType == eventTypeName)
+            .OrderBy(e => e.OccurredOn)
+            .ToListAsync(cancellationToken);
+        
+        return storedEvents.Select(DeserializeEvent).Where(e => e != null);
+    }
+    
+    public async Task<IEnumerable<IDomainEvent>> GetEventsAsync(DateTime from, DateTime to, 
+                                                              CancellationToken cancellationToken = default)
+    {
+        var storedEvents = await _context.StoredEvents
+            .Where(e => e.OccurredOn >= from && e.OccurredOn <= to)
+            .OrderBy(e => e.OccurredOn)
+            .ToListAsync(cancellationToken);
+        
+        return storedEvents.Select(DeserializeEvent).Where(e => e != null);
+    }
+    
+    public async Task<EventStoreStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
+    {
+        var totalEvents = await _context.StoredEvents.CountAsync(cancellationToken);
+        var uniqueAggregates = await _context.StoredEvents
+            .Select(e => e.AggregateId)
+            .Distinct()
+            .CountAsync(cancellationToken);
+        
+        var eventTypeCounts = await _context.StoredEvents
+            .GroupBy(e => e.EventType)
+            .Select(g => new { EventType = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+        
+        var oldestEvent = await _context.StoredEvents
+            .OrderBy(e => e.OccurredOn)
+            .Select(e => e.OccurredOn)
+            .FirstOrDefaultAsync(cancellationToken);
+        
+        var newestEvent = await _context.StoredEvents
+            .OrderByDescending(e => e.OccurredOn)
+            .Select(e => e.OccurredOn)
+            .FirstOrDefaultAsync(cancellationToken);
+        
+        return new EventStoreStatistics
+        {
+            TotalEvents = totalEvents,
+            UniqueAggregates = uniqueAggregates,
+            EventTypeCounts = eventTypeCounts.ToDictionary(x => x.EventType, x => x.Count),
+            OldestEventDate = oldestEvent,
+            NewestEventDate = newestEvent
+        };
+    }
+    
+    private async Task<int> GetCurrentVersionAsync(string aggregateId, CancellationToken cancellationToken)
+    {
+        return await _context.StoredEvents
+            .Where(e => e.AggregateId == aggregateId)
+            .MaxAsync(e => (int?)e.Version, cancellationToken) ?? 0;
+    }
+    
+    private IDomainEvent DeserializeEvent(StoredEvent storedEvent)
+    {
+        try
+        {
+            if (!_eventTypeCache.TryGetValue(storedEvent.EventType, out var eventType))
+            {
+                _logger.LogWarning("Unknown event type: {EventType}", storedEvent.EventType);
+                return null;
+            }
+            
+            var domainEvent = (IDomainEvent)JsonSerializer.Deserialize(storedEvent.EventData, eventType, _jsonOptions);
+            
+            // メタデータの復元
+            if (!string.IsNullOrEmpty(storedEvent.Metadata))
+            {
+                var metadata = JsonSerializer.Deserialize<Dictionary<string, object>>(storedEvent.Metadata, _jsonOptions);
+                foreach (var kvp in metadata)
+                {
+                    domainEvent.Metadata[kvp.Key] = kvp.Value;
+                }
+            }
+            
+            return domainEvent;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize event {EventId} of type {EventType}", 
+                storedEvent.EventId, storedEvent.EventType);
+            return null;
+        }
+    }
+}
+
+// イベントストア統計情報
+public class EventStoreStatistics
+{
+    public int TotalEvents { get; set; }
+    public int UniqueAggregates { get; set; }
+    public Dictionary<string, int> EventTypeCounts { get; set; } = new();
+    public DateTime? OldestEventDate { get; set; }
+    public DateTime? NewestEventDate { get; set; }
+}
+
+// 並行性例外
+public class ConcurrencyException : Exception
+{
+    public ConcurrencyException(string message) : base(message) { }
+    public ConcurrencyException(string message, Exception innerException) : base(message, innerException) { }
+}
+
+// Entity Framework用のDbContext
+public class EventStoreDbContext : DbContext
+{
+    public DbSet<StoredEvent> StoredEvents { get; set; }
+    
+    public EventStoreDbContext(DbContextOptions<EventStoreDbContext> options) : base(options) { }
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<StoredEvent>(entity =>
+        {
+            entity.ToTable("Events");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.EventId).IsRequired();
+            entity.Property(e => e.AggregateId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.AggregateType).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.EventType).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.EventData).IsRequired();
+            entity.Property(e => e.Metadata);
+            entity.Property(e => e.OccurredOn).IsRequired();
+            entity.Property(e => e.Version).IsRequired();
+            entity.Property(e => e.CorrelationId).HasMaxLength(100);
+            entity.Property(e => e.CausationId).HasMaxLength(100);
+            
+            // インデックス
+            entity.HasIndex(e => e.AggregateId);
+            entity.HasIndex(e => e.EventType);
+            entity.HasIndex(e => e.OccurredOn);
+            entity.HasIndex(e => e.CorrelationId);
+            entity.HasIndex(e => new { e.AggregateId, e.Version }).IsUnique();
+        });
+    }
+}
+
+// 使用例: リポジトリでのイベントストア統合
+public class EventSourcedOrderRepository : IOrderRepository
+{
+    private readonly IEventStore _eventStore;
+    private readonly IDomainEventDispatcher _eventDispatcher;
+    private readonly ILogger<EventSourcedOrderRepository> _logger;
+    
+    public EventSourcedOrderRepository(
+        IEventStore eventStore,
+        IDomainEventDispatcher eventDispatcher,
+        ILogger<EventSourcedOrderRepository> logger)
+    {
+        _eventStore = eventStore;
+        _eventDispatcher = eventDispatcher;
+        _logger = logger;
+    }
+    
+    public async Task<Order> GetByIdAsync(OrderId orderId)
+    {
+        var events = await _eventStore.GetEventsAsync(orderId.Value.ToString());
+        
+        if (!events.Any())
+        {
+            return null;
+        }
+        
+        var order = new Order();
+        order.LoadFromHistory(events);
+        
+        return order;
+    }
+    
+    public async Task<Order> SaveAsync(Order order)
+    {
+        var uncommittedEvents = order.UncommittedEvents;
+        if (!uncommittedEvents.Any())
+        {
+            return order;
+        }
+        
+        await _eventStore.SaveEventsAsync(
+            order.Id.Value.ToString(),
+            uncommittedEvents,
+            order.Version - uncommittedEvents.Count);
+        
+        // イベントを発行
+        await _eventDispatcher.DispatchAsync(uncommittedEvents);
+        
+        // コミット済みとしてマーク
+        order.MarkEventsAsCommitted();
+        
+        return order;
+    }
+}`,
+      language: 'csharp'
+    },
+    {
+      id: 'event-dispatcher',
+      title: 'イベントディスパッチャー',
+      code: `public interface IDomainEventDispatcher
+{
+    Task DispatchAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default);
+    Task DispatchAsync(IEnumerable<IDomainEvent> domainEvents, CancellationToken cancellationToken = default);
+}
+
+public class DomainEventDispatcher : IDomainEventDispatcher
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<DomainEventDispatcher> _logger;
+    
+    public DomainEventDispatcher(IServiceProvider serviceProvider, ILogger<DomainEventDispatcher> logger)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+    }
+    
+    public async Task DispatchAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default)
+    {
+        var eventType = domainEvent.GetType();
+        var handlerType = typeof(IDomainEventHandler<>).MakeGenericType(eventType);
+        var handlers = _serviceProvider.GetServices(handlerType);
+        
+        var tasks = handlers.Select(handler =>
+        {
+            var method = handlerType.GetMethod("HandleAsync");
+            return (Task)method.Invoke(handler, new object[] \{ domainEvent, cancellationToken \});
+        });
+        
+        await Task.WhenAll(tasks);
+    }
+}`,
+      language: 'csharp'
+    }
+  ],
+  exercises: [
+    {
+      id: 'library-management-domain-events',
+      title: '図書館管理システムのドメインイベント実装',
+      description: '図書館管理システムで本の貸出・返却に関するドメインイベントとハンドラーを実装してください。',
+      difficulty: 'intermediate',
+      starterCode: `// ここに実装してください
+public class BookBorrowed : DomainEvent
+{
+    // TODO: 必要なプロパティとコンストラクタを実装
+}`,
+      requirements: [
+        'BookBorrowed、BookReturned、BookOverdueイベントの実装',
+        '各イベントに対するハンドラーの実装',
+        '延滞処理の自動化',
+        'メール通知機能の実装'
+      ]
+    },
+    {
+      id: 'member-auto-suspension-system',
+      title: '会員自動停止システム',
+      description: '延滞回数に基づく会員の自動停止処理をドメインイベントで実装してください。',
+      difficulty: 'advanced',
+      starterCode: `public class Member : AggregateRoot<MemberId>
+{
+    private int _overdueCount;
+    
+    public void RecordOverdueBook(BookId bookId)
+    {
+        // TODO: 実装してください
+    }
+}`,
+      requirements: [
+        'Member集約での延滞回数管理',
+        '自動停止ルールの実装',
+        'MemberSuspendedイベントの発行',
+        '停止通知とアンサスペンド処理'
+      ]
+    },
+    {
+      id: 'event-sourcing-pattern',
+      title: 'イベントソーシングパターン',
+      description: '注文集約をイベントソーシングパターンで実装してください。',
+      difficulty: 'advanced',
+      starterCode: `public class OrderAggregate
+{
+    private readonly List<IDomainEvent> _events = new();
+    
+    public static OrderAggregate FromEvents(IEnumerable<IDomainEvent> events)
+    {
+        // TODO: 実装してください
+        return new OrderAggregate();
+    }
+}`,
+      requirements: [
+        'イベントストアの実装',
+        'イベントからの状態復元',
+        'スナップショット機能',
+        'イベントのバージョニング'
+      ]
+    }
+  ]
+};

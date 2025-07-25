@@ -44,23 +44,39 @@ class ClaudeApiService {
   // サーバーヘルスチェック
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.config.serverUrl}/api/health`, {
+      const url = '/api/health';
+      console.log('🏥 Health check attempting to connect to:', url);
+      console.log('🏥 Using relative URL via Vite proxy');
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
       
+      console.log('🏥 Health check response status:', response.status);
+      console.log('🏥 Health check response ok:', response.ok);
+      console.log('🏥 Response URL:', response.url);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🏥 Health check response data:', data);
+      }
+      
       return response.ok;
     } catch (error) {
-      console.error('Health check failed:', error);
+      console.error('🚨 Health check failed:', error);
+      console.error('🚨 Error details:', error instanceof Error ? error.message : String(error));
+      console.error('🚨 Error stack:', error instanceof Error ? error.stack : '');
       return false;
     }
   }
 
   // サーバーが利用可能かチェック
-  async isConfigured(): Promise<boolean> {
-    return await this.healthCheck();
+  isConfigured(): boolean {
+    // 設定が存在するかどうかの基本チェック（ヘルスチェックは行わない）
+    return !!this.config?.serverUrl;
   }
 
   // レート制限チェック
@@ -88,7 +104,7 @@ class ClaudeApiService {
     }
 
     try {
-      const response = await fetch(`${this.config.serverUrl}${endpoint}`, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -396,12 +412,24 @@ export function generatedFunction() {
   }
 }
 
+// 動的サーバーURL生成（WSL環境に最適化）
+const getServerUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    // Viteプロキシを経由するため、相対URLを使用
+    console.log('Using Vite proxy for API requests');
+    return '';  // 空文字列 = 現在のoriginを使用
+  }
+  return 'http://localhost:3001';
+};
+
 // デフォルト設定
 const defaultConfig: ClaudeConfig = {
-  serverUrl: 'http://localhost:3001',
+  serverUrl: getServerUrl(),
   model: 'sonnet',
   timeout: 30000, // 30秒
 };
+
+console.log('🔧 ClaudeApiService default config:', defaultConfig);
 
 // シングルトンインスタンス
 export const claudeApiService = new ClaudeApiService(defaultConfig); 

@@ -1,4 +1,4 @@
-import type { ProjectFile, FileContext } from '../hooks/ai/useFileContext';
+import type { ProjectFile } from '../hooks/ai/useFileContext';
 
 export interface FileSystemCapabilities {
   canAccessFileSystem: boolean;
@@ -45,7 +45,7 @@ class FileSystemService {
         startIn: 'documents',
       });
 
-      console.log('📁 Project directory selected:', this.directoryHandle.name);
+      console.log('📁 Project directory selected:', this.directoryHandle?.name);
       return true;
     } catch (error) {
       if ((error as any).name !== 'AbortError') {
@@ -60,12 +60,15 @@ class FileSystemService {
     if (!this.directoryHandle) return false;
 
     try {
-      const permission = await this.directoryHandle.queryPermission({ mode: 'readwrite' });
-      if (permission === 'granted') return true;
+      // Check if permission methods are available
+      if ('queryPermission' in this.directoryHandle) {
+        const permission = await (this.directoryHandle as any).queryPermission({ mode: 'readwrite' });
+        if (permission === 'granted') return true;
 
-      if (permission === 'prompt') {
-        const newPermission = await this.directoryHandle.requestPermission({ mode: 'readwrite' });
-        return newPermission === 'granted';
+        if (permission === 'prompt' && 'requestPermission' in this.directoryHandle) {
+          const newPermission = await (this.directoryHandle as any).requestPermission({ mode: 'readwrite' });
+          return newPermission === 'granted';
+        }
       }
 
       return false;
@@ -101,7 +104,7 @@ class FileSystemService {
   ): Promise<void> {
     const currentPath = path ? `${path}/` : '';
 
-    for await (const [name, handle] of dirHandle.entries()) {
+    for await (const [name, handle] of (dirHandle as any).entries()) {
       const fullPath = `${currentPath}${name}`;
       
       // 除外パターン

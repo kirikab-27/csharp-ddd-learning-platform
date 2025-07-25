@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>メニューホバーテスト</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+  <div class="flex h-screen">
+    <!-- サイドバー -->
+    <div 
+      id="sidebar"
+      class="relative bg-white border-r border-gray-200 transition-all duration-300 ease-in-out"
+      style="width: 48px;"
+      onmouseover="expandMenu()"
+      onmouseout="collapseMenu()"
+    >
+      <!-- メニューコンテンツ -->
+      <div class="p-2">
+        <div id="collapsed-content" class="text-center">
+          <span class="text-lg">📚</span>
+        </div>
+        <div id="expanded-content" class="hidden">
+          <h2 class="text-xl font-bold">C# 基礎</h2>
+          <p class="text-sm text-gray-600 mt-2">プログラミングの基礎から学習</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- メインコンテンツ -->
+    <div class="flex-1 p-8">
+      <h1 class="text-2xl font-bold mb-4">レッスン内容</h1>
+      <p>マウスを左のメニューに移動すると、メニューが展開されます。</p>
+      <p>マウスをメニューから離すと、メニューが折りたたまれます。</p>
+    </div>
+  </div>
+
+  <script>
+    let isExpanded = false;
+    let isHovered = false;
+    
+    function expandMenu() {
+      isHovered = true;
+      updateMenu();
+    }
+    
+    function collapseMenu() {
+      isHovered = false;
+      updateMenu();
+    }
+    
+    function updateMenu() {
+      const sidebar = document.getElementById('sidebar');
+      const collapsedContent = document.getElementById('collapsed-content');
+      const expandedContent = document.getElementById('expanded-content');
+      
+      if (isExpanded || isHovered) {
+        sidebar.style.width = '320px';
+        collapsedContent.classList.add('hidden');
+        expandedContent.classList.remove('hidden');
+      } else {
+        sidebar.style.width = '48px';
+        collapsedContent.classList.remove('hidden');
+        expandedContent.classList.add('hidden');
+      }
+    }
+  </script>
+</body>
+</html>

@@ -20,6 +20,7 @@ class AIService {
   };
 
   constructor() {
+    console.log('🚀 AIService constructor called');
     this.initializeService();
   }
 
@@ -39,15 +40,20 @@ class AIService {
 
   private async checkClaudeConnection(): Promise<void> {
     try {
+      console.log('🔍 Starting Claude API health check...');
+      
       if (claudeApiService.isConfigured()) {
+        console.log('✓ Claude API is configured');
         const isHealthy = await claudeApiService.healthCheck();
+        console.log('🩺 Health check result:', isHealthy);
+        
         this.status.isOnline = isHealthy;
         
         if (isHealthy) {
-          console.log('✅ Claude API connection established');
+          console.log('✅ Claude API connection established - ONLINE MODE');
           this.status.successCount++;
         } else {
-          console.warn('⚠️ Claude API health check failed');
+          console.warn('⚠️ Claude API health check failed - using fallback mode');
           this.status.errorCount++;
         }
       } else {
@@ -55,21 +61,23 @@ class AIService {
         this.status.isOnline = false;
       }
     } catch (error) {
-      console.error('❌ Claude API connection failed:', error);
+      console.error('❌ Claude API connection error - using fallback mode:', error);
+      console.error('Error details:', error instanceof Error ? error.message : String(error), error instanceof Error ? error.stack : '');
       this.status.isOnline = false;
       this.status.errorCount++;
     }
     
     this.status.lastHealthCheck = Date.now();
+    console.log('📊 Final status: isOnline =', this.status.isOnline);
   }
 
   // APIキーの設定
-  setApiKey(apiKey: string): boolean {
-    const success = claudeApiService.setApiKey(apiKey);
-    if (success) {
-      this.checkClaudeConnection();
-    }
-    return success;
+  setApiKey(_apiKey: string): boolean {
+    // Note: Claude API service doesn't have setApiKey method currently
+    // The API key is managed at the server level
+    console.log('API key configuration requested, but handled at server level');
+    this.checkClaudeConnection();
+    return true;
   }
 
   // コード分析（Phase 3強化版）
@@ -197,7 +205,7 @@ ${result.explanation}
   }
 
   // フォールバック分析
-  private async fallbackAnalysis(code: string, context?: string): Promise<AIAnalysisResult> {
+  private async fallbackAnalysis(code: string, _context?: string): Promise<AIAnalysisResult> {
     // 知識ベースから関連パターンを検索
     const codeLanguage = this.detectLanguage(code);
     const relatedKnowledge = knowledgeService.search(codeLanguage);

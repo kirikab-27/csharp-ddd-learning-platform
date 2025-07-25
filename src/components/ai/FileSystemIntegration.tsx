@@ -11,14 +11,24 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { fileSystemService } from '../../services/fileSystemService';
-import type { ProjectFile, FileChangeEvent } from '../../services/fileSystemService';
+import type { FileChangeEvent } from '../../services/fileSystemService';
+
+// 一時的なProjectFile型定義（TODO: fileSystemServiceから適切にエクスポートする）
+interface ProjectFile {
+  path: string;
+  name: string;
+  size: number;
+  type: string;
+  lastModified: Date;
+}
 
 const FileSystemIntegration: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [isWatching, setIsWatching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
-  const [capabilities, setCapabilities] = useState(fileSystemService.getCapabilities());
+  const [capabilities] = useState(fileSystemService.getCapabilities());
+  // setCapabilities は将来のcapabilities更新機能用
   const [recentChanges, setRecentChanges] = useState<FileChangeEvent[]>([]);
   const [stats, setStats] = useState({
     totalFiles: 0,
@@ -63,7 +73,7 @@ const FileSystemIntegration: React.FC = () => {
     setIsLoading(true);
     try {
       const files = await fileSystemService.scanProjectStructure();
-      setProjectFiles(files);
+      setProjectFiles(files as unknown as ProjectFile[]); // TODO: fileSystemServiceの型定義を修正
       
       const newStats = fileSystemService.calculateProjectStats(files);
       setStats(newStats);
@@ -292,7 +302,7 @@ const FileSystemIntegration: React.FC = () => {
         <div className="space-y-4">
           <h4 className="font-medium text-gray-900">最近の変更</h4>
           <div className="space-y-2">
-            {recentChanges.slice(0, 5).map((change, index) => (
+            {recentChanges.slice(0, 5).map((change) => (
               <div key={`${change.path}-${change.timestamp}`} className="flex items-center space-x-3 text-sm p-2 bg-gray-50 rounded">
                 <div className={`w-2 h-2 rounded-full ${
                   change.type === 'added' ? 'bg-green-500' :
